@@ -53,6 +53,10 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   int vruntime;                // Virtual runtime to sort red black tree
+  int cruntime;                // Current runtime
+  int timeslice;               // Time Slice for maximum execution time of the process
+  int niceValue;               // Nice value to determine initial weight
+  int weightValue;             // Weight value to determine process timeslice
 
   struct proc *left;           // Left child in rbtree
   struct proc *right;          // Right child in rbtree

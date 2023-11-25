@@ -13,7 +13,9 @@ struct {
 } ptable;
 
 struct redBlackTree{
-  struct proc *root;
+  struct proc *root; // Root node
+  int count;         // Total amount of nodes in rbtree
+  int rbTreeWeight;  // Total sum of node weights
 } rbtree;
 
 static struct proc *initproc;
