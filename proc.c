@@ -13,9 +13,10 @@ struct {
 } ptable;
 
 struct redBlackTree{
-  struct proc *root; // Root node
-  int count;         // Total amount of nodes in rbtree
-  int rbTreeWeight;  // Total sum of node weights
+  struct proc *root;         // Root node
+  struct proc *min_vruntime; // Minimum vruntime node for O(1) access
+  int count;                 // Total amount of nodes in rbtree
+  int rbTreeWeight;          // Total sum of node weights
 } rbtree;
 
 static struct proc *initproc;
@@ -62,7 +63,19 @@ rotateRight(struct redBlackTree *tree, struct proc *node)
 }
 
 void
+rbinsertFixup(struct redBlackTree *tree, struct proc *node)
+{
+  //TODO
+}
+
+void
 rbinsert(struct redBlackTree *tree, struct proc *node)
+{
+  //TODO
+}
+
+void
+rbdeleteFixup(struct redBlackTree *tree, struct proc *node)
 {
   //TODO
 }
