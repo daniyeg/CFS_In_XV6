@@ -101,6 +101,7 @@ rbinit(struct redBlackTree *tree, char *lockName)
 }
 
 // Get the process to schedule next.
+// Returns 0(null) if failed to get min_vruntime.
 struct proc*
 getproc(struct redBlackTree *tree)
 {
@@ -108,15 +109,34 @@ getproc(struct redBlackTree *tree)
 
   acquire(&tree->lock);
 
-  //TODO
+  if (tree->count != 0) // If the tree isn't empty
+  {
+    // Get process with minimum vruntime and "pop" it out of the tree
+    next_process = tree->min_vruntime;
+    rbdelete(tree, tree->min_vruntime);
+    // Determine new process with smallest vruntime.
+    tree->min_vruntime = retriveMinimumVRuntime(tree->root);
+
+    // Return NULL if the process is not runnable
+    if(next_process->state != RUNNABLE)
+    {
+      release(&tree->lock);
+      return 0;
+    }
+
+    // Calculate maximum timesclie of the process
+    next_process->timeslice = 0; // TODO: calculate timeslice
+
+    release(&tree->lock);
+    return next_process;
+  }
 
   release(&tree->lock);
-
-  return next_process;
+  return 0;
 }
 
 // Insert runnable process into the red black tree.
-// Return 0 if insert was successful, -1 if not.
+// Returns 0 if insert was successful, -1 if not.
 int
 insertproc(struct redBlackTree *tree, struct proc *p)
 {
