@@ -116,14 +116,27 @@ getproc(struct redBlackTree *tree)
 }
 
 // Insert runnable process into the red black tree.
-void
+// Return 0 if insert was successful, -1 if not.
+int
 insertproc(struct redBlackTree *tree, struct proc *p)
 {
   acquire(&tree->lock);
 
-  //TODO
+  if (tree->count < NPROC) // If the tree isn't full
+  {
+    // Calculate the weight of the process based on its nice value.
+    p->weightValue = 0; // TODO: calculate weight
+
+    // Insert process into the tree.
+    // All properties that change about the tree is done within rbinsert.
+    rbinsert(tree, p);
+
+    release(&tree->lock);
+    return 0;
+  }
 
   release(&tree->lock);
+  return -1;
 }
 
 void
