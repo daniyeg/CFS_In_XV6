@@ -14,7 +14,8 @@ struct {
 
 struct redBlackTree{
   struct proc *root;         // Root node
-  struct proc *min_vruntime; // Minimum vruntime node for O(1) access
+  struct proc *min_vruntime; // Node wih minimum vruntime for O(1) access
+  struct spinlock lock;      // Spinlock for the tree
   int count;                 // Total amount of nodes in rbtree
   int rbTreeWeight;          // Total sum of node weights
 } rbtree;
@@ -88,10 +89,48 @@ rbdelete(struct redBlackTree *tree, struct proc *node)
 
 // --------------------------------------------
 
+// Initialize the red black tree
+void
+rbinit(struct redBlackTree *tree, char *lockName)
+{
+  initlock(&tree->lock, lockName);
+  tree->root = 0;
+  tree->min_vruntime = 0;
+  tree->count = 0;
+  tree->rbTreeWeight = 0;
+}
+
+// Get the process to schedule next.
+struct proc*
+getproc(struct redBlackTree *tree)
+{
+  struct proc *next_process;
+
+  acquire(&tree->lock);
+
+  //TODO
+
+  release(&tree->lock);
+
+  return next_process;
+}
+
+// Insert runnable process into the red black tree.
+void
+insertproc(struct redBlackTree *tree, struct proc *p)
+{
+  acquire(&tree->lock);
+
+  //TODO
+
+  release(&tree->lock);
+}
+
 void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  rbinit(&rbtree, "rbtree");
 }
 
 // Must be called with interrupts disabled
