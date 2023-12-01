@@ -30,11 +30,12 @@ static void wakeup1(void *chan);
 
 // --------------------------------------------
 // Red Black Tree functions
+
 struct proc*
 retriveGrandparent(struct proc *node)
 {
-  if (node != NULL && node->parent != NULL)
-    return node->parent->parent;
+  if (node != NULL && node->rbparent != NULL)
+    return node->rbparent->rbparent;
   else
     return NULL; // There's no grandparent if node doesn't exist or its parent doesn't exist.
 }
@@ -46,10 +47,19 @@ retriveUncle(struct proc *node)
   if (grandparent == NULL)
     return NULL; // No uncle if there's no grandparent.
 
-  if (node->parent == grandparent->left)
+  if (node->rbparent == grandparent->left)
     return grandparent->right;
   else
     return grandparent->left;
+}
+
+struct proc*
+retriveMinimum(struct proc *node)
+{
+  while (node->left != NULL)
+    node = node->left;
+
+  return node;
 }
 
 void
@@ -61,18 +71,18 @@ rotateLeft(struct redBlackTree *tree, struct proc *node)
 
   node->right = rightChild->left;
   if (rightChild->left != NULL)
-    rightChild->left->parent = node;
+    rightChild->left->rbparent = node;
 
-  rightChild->parent = node->parent;
-  if (node->parent == NULL)
+  rightChild->rbparent = node->rbparent;
+  if (node->rbparent == NULL)
     tree->root = rightChild;
-  else if (node == node->parent->left)
-    node->parent->left = rightChild;
+  else if (node == node->rbparent->left)
+    node->rbparent->left = rightChild;
   else
-    node->parent->right = rightChild;
+    node->rbparent->right = rightChild;
 
   rightChild->left = node;
-  node->parent = rightChild;
+  node->rbparent = rightChild;
 }
 
 void
@@ -84,43 +94,32 @@ rotateRight(struct redBlackTree *tree, struct proc *node)
 
   node->left = leftChild->right;
   if (leftChild->right != NULL)
-    leftChild->right->parent = node;
+    leftChild->right->rbparent = node;
 
-  leftChild->parent = node->parent;
-  if (node->parent == NULL)
+  leftChild->rbparent = node->rbparent;
+  if (node->rbparent == NULL)
     tree->root = leftChild;
-  else if (node == node->parent->right)
-    node->parent->right = leftChild;
+  else if (node == node->rbparent->right)
+    node->rbparent->right = leftChild;
   else
-    node->parent->left = leftChild;
+    node->rbparent->left = leftChild;
 
   leftChild->right = node;
-  node->parent = leftChild;
+  node->rbparent = leftChild;
 }
 
-// Helper function to perform node transplant
 void
 rbtransplant(struct redBlackTree *tree, struct proc *u, struct proc *v)
 {
-  if (u->parent == NULL)
+  if (u->rbparent == NULL)
     tree->root = v;
-  else if (u == u->parent->left)
-    u->parent->left = v;
+  else if (u == u->rbparent->left)
+    u->rbparent->left = v;
   else
-    u->parent->right = v;
+    u->rbparent->right = v;
 
   if (v != NULL)
-    v->parent = u->parent;
-}
-
-// Helper function to find the node with the minimum value in a subtree
-struct proc*
-tree_minimum(struct proc *node)
-{
-  while (node->left != NULL)
-    node = node->left;
-
-  return node;
+    v->rbparent = u->rbparent;
 }
 
 void
@@ -128,8 +127,8 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
 {
   struct proc *parent, *grandparent, *uncle;
 
-  while (node != tree->root && node->parent->color == RED) {
-    parent = node->parent;
+  while (node != tree->root && node->rbparent->color == RED) {
+    parent = node->rbparent;
     grandparent = retriveGrandparent(node);
 
     if (parent == grandparent->left) {
@@ -146,7 +145,7 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
           rotateLeft(tree, node);
         }
 
-        parent = node->parent;
+        parent = node->rbparent;
         grandparent = retriveGrandparent(node);
 
         parent->color = BLACK;
@@ -168,7 +167,7 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
           rotateRight(tree, node);
         }
 
-        parent = node->parent;
+        parent = node->rbparent;
         grandparent = retriveGrandparent(node);
 
         parent->color = BLACK;
@@ -195,7 +194,7 @@ rbinsert(struct redBlackTree *tree, struct proc *node) {
   }
 
   // Set the parent for the new node
-  node->parent = parent;
+  node->rbparent = parent;
 
   // Set the appropriate child of the parent to the new node
   if (parent == NULL)
@@ -218,58 +217,58 @@ rbdeleteFixup(struct redBlackTree *tree, struct proc *node) {
   struct proc *sibling;
 
   while (node != tree->root && node->color == BLACK) {
-    if (node == node->parent->left) {
-      sibling = node->parent->right;
+    if (node == node->rbparent->left) {
+      sibling = node->rbparent->right;
 
       if (sibling->color == RED) {
         sibling->color = BLACK;
-        node->parent->color = RED;
-        rotateLeft(tree, node->parent);
-        sibling = node->parent->right;
+        node->rbparent->color = RED;
+        rotateLeft(tree, node->rbparent);
+        sibling = node->rbparent->right;
       }
 
       if (sibling->left->color == BLACK && sibling->right->color == BLACK) {
         sibling->color = RED;
-        node = node->parent;
+        node = node->rbparent;
       } else {
         if (sibling->right->color == BLACK) {
           sibling->left->color = BLACK;
           sibling->color = RED;
           rotateRight(tree, sibling);
-          sibling = node->parent->right;
+          sibling = node->rbparent->right;
         }
 
-        sibling->color = node->parent->color;
-        node->parent->color = BLACK;
+        sibling->color = node->rbparent->color;
+        node->rbparent->color = BLACK;
         sibling->right->color = BLACK;
-        rotateLeft(tree, node->parent);
+        rotateLeft(tree, node->rbparent);
         node = tree->root;
         }
     } else {
-      sibling = node->parent->left;
+      sibling = node->rbparent->left;
 
       if (sibling->color == RED) {
         sibling->color = BLACK;
-        node->parent->color = RED;
-        rotateRight(tree, node->parent);
-        sibling = node->parent->left;
+        node->rbparent->color = RED;
+        rotateRight(tree, node->rbparent);
+        sibling = node->rbparent->left;
       }
 
       if (sibling->right->color == BLACK && sibling->left->color == BLACK) {
         sibling->color = RED;
-        node = node->parent;
+        node = node->rbparent;
       } else {
         if (sibling->left->color == BLACK) {
           sibling->right->color = BLACK;
           sibling->color = RED;
           rotateLeft(tree, sibling);
-          sibling = node->parent->left;
+          sibling = node->rbparent->left;
         }
 
-        sibling->color = node->parent->color;
-        node->parent->color = BLACK;
+        sibling->color = node->rbparent->color;
+        node->rbparent->color = BLACK;
         sibling->left->color = BLACK;
-        rotateRight(tree, node->parent);
+        rotateRight(tree, node->rbparent);
         node = tree->root;
       }
     }
@@ -289,22 +288,22 @@ rbdelete(struct redBlackTree *tree, struct proc *node) {
     child = node->left;
     rbtransplant(tree, node, node->left);
   } else {
-    temp = tree_minimum(node->right);
+    temp = retriveMinimum(node->right);
     original_color = temp->color;
     child = temp->right;
 
-    if (temp->parent == node) {
+    if (temp->rbparent == node) {
       if (child != NULL)
-        child->parent = temp;
+        child->rbparent = temp;
     } else {
       rbtransplant(tree, temp, temp->right);
       temp->right = node->right;
-      temp->right->parent = temp;
+      temp->right->rbparent = temp;
     }
 
     rbtransplant(tree, node, temp);
     temp->left = node->left;
-    temp->left->parent = temp;
+    temp->left->rbparent = temp;
     temp->color = node->color;
   }
 
