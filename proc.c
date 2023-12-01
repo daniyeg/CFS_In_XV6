@@ -317,6 +317,18 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Set up variables that are used by CFS.
+  p->vruntime = 0;
+  p->cruntime = 0;
+  p->timeslice = 0;
+  p->niceValue = 0;
+  p->weightValue = 0;
+
+  p->left = 0;
+  p->right = 0;
+  p->rbparent = 0;
+  p->color = RED;
+
   return p;
 }
 
