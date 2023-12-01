@@ -18,7 +18,11 @@ struct redBlackTree{
   struct spinlock lock;      // Spinlock for the tree
   int count;                 // Total amount of nodes in rbtree
   int rbTreeWeight;          // Total sum of node weights
+  int period;                // Scheduler period
 } rbtree;
+
+static int min_granularity = 2; // Minimum time a task is allowed to run, tunable
+static int sched_latency = 2*8; // Must be multiple of min_granularity, tunable
 
 static struct proc *initproc;
 
@@ -112,10 +116,32 @@ rbinit(struct redBlackTree *tree, char *lockName)
   tree->min_vruntime = 0;
   tree->count = 0;
   tree->rbTreeWeight = 0;
+  tree->period = sched_latency; // Set initial period to sched_latency
+}
+
+// Update virtual runtime based on the current runtime and set current runtime to 0.
+// Since we are updating values of a process, ptable lock must be held before calling.
+void
+updateruntimes(struct proc *p)
+{
+  p->vruntime = p->vruntime +
+      (prio_to_weight[20] / p->weightValue) * p->cruntime;
+  p->cruntime = 0;
+}
+
+// Update scheduler period.
+// Since we are updating values of a tree, tree lock must be held before calling.
+void
+updateperiod(struct redBlackTree *tree)
+{
+  if (tree->count > sched_latency / min_granularity)
+    tree->period = tree->count * min_granularity;
+  else
+    tree->period = sched_latency;
 }
 
 // Get the process to schedule next.
-// Returns 0(null) if failed to get min_vruntime.
+// Returns 0 (null) if failed to get min_vruntime.
 struct proc*
 getproc(struct redBlackTree *tree)
 {
@@ -138,8 +164,11 @@ getproc(struct redBlackTree *tree)
       return 0;
     }
 
+    // Update sched period before calculating the maximum timeslice.
+    updateperiod(tree);
     // Calculate maximum timesclie of the process
-    next_process->timeslice = 0; // TODO: calculate timeslice
+    next_process->timeslice = tree->period *
+        (next_process->weightValue / tree->rbTreeWeight);
 
     release(&tree->lock);
     return next_process;
@@ -171,6 +200,28 @@ insertproc(struct redBlackTree *tree, struct proc *p)
 
   release(&tree->lock);
   return -1;
+}
+
+// Check whether or not we should preempt the current task.
+// Return 0 if we don't need to preempt, otherwise return 1.
+int
+checkpreempt(struct proc *curproc, struct proc *min_vruntime)
+{
+  // If the process has run less than min_granularity, don't preempt
+  if (curproc->cruntime < min_granularity)
+    return 0;
+
+  // Check if the current process has exceeded its timeslice
+  if (curproc->cruntime >= curproc->timeslice)
+    return 1;
+
+  // Check if we should switch to min_vruntime in the tree.
+  // Happens if min_vruntime is a runnable task with a lower virtual runtime.
+  if (min_vruntime != 0 && min_vruntime->state == RUNNABLE &&
+      curproc->vruntime > min_vruntime->vruntime)
+      return 1;
+
+  return 0;
 }
 
 void
@@ -535,13 +586,21 @@ sched(void)
   mycpu()->intena = intena;
 }
 
-// Give up the CPU for one scheduling round.
+// Determine whether the current process should be preempted or not.
 void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
-  sched();
+
+  // If the current process should be preempted, update its runtimes and reschedule.
+  if (checkpreempt(myproc(), rbtree.min_vruntime))
+  {
+    updateruntimes(myproc());
+    myproc()->state = RUNNABLE;
+    insertproc(&rbtree, myproc());
+    sched();
+  }
+
   release(&ptable.lock);
 }
 
