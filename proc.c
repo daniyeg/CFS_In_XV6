@@ -210,6 +210,11 @@ rbinsert(struct redBlackTree *tree, struct proc *node) {
 
   // Fix any violations of the red-black tree properties
   rbinsertFixup(tree, node);
+
+  // Update the tree CFS properties
+  tree->rbTreeWeight += node->weightValue;
+  tree->count++;
+  tree->min_vruntime = retriveMinimum(tree->root);
 }
 
 void
@@ -309,6 +314,11 @@ rbdelete(struct redBlackTree *tree, struct proc *node) {
 
   if (original_color == BLACK)
     rbdeleteFixup(tree, child);
+
+  // Update the tree CFS properties
+  tree->rbTreeWeight -= node->weightValue;
+  tree->count--;
+  tree->min_vruntime = retriveMinimum(tree->root);
 }
 
 // --------------------------------------------
