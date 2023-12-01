@@ -353,7 +353,10 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
+  // Make the process runnable.
   p->state = RUNNABLE;
+  // Insert the process into the tree.
+  insertproc(&rbtree, p);
 
   release(&ptable.lock);
 }
@@ -419,7 +422,12 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  // Make the process runnable.
   np->state = RUNNABLE;
+  // Nice value of the parent gets copied to the child.
+  np->niceValue = curproc->niceValue;
+  // Insert the process into the tree.
+  insertproc(&rbtree, np);
 
   release(&ptable.lock);
 
@@ -674,7 +682,14 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
+      // Make the process runnable.
       p->state = RUNNABLE;
+      // Update current and virtual runtimes.
+      updateruntimes(p);
+      // Insert the process into the tree.
+      insertproc(&rbtree, p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -700,7 +715,14 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
+      {
+        // Make the process runnable.
         p->state = RUNNABLE;
+        // Update current and virtual runtimes.
+        updateruntimes(p);
+        // Insert the process into the tree.
+        insertproc(&rbtree, p);
+      }
       release(&ptable.lock);
       return 0;
     }
