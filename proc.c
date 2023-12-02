@@ -122,6 +122,7 @@ rbtransplant(struct redBlackTree *tree, struct proc *u, struct proc *v)
     v->rbparent = u->rbparent;
 }
 
+// repeated code because we haven't used retreiveUncle
 void
 rbinsertFixup(struct redBlackTree *tree, struct proc *node)
 {
@@ -248,7 +249,7 @@ rbdeleteFixup(struct redBlackTree *tree, struct proc *node) {
         sibling->right->color = BLACK;
         rotateLeft(tree, node->rbparent);
         node = tree->root;
-        }
+      }
     } else {
       sibling = node->rbparent->left;
 
@@ -297,10 +298,7 @@ rbdelete(struct redBlackTree *tree, struct proc *node) {
     original_color = temp->color;
     child = temp->right;
 
-    if (temp->rbparent == node) {
-      if (child != NULL)
-        child->rbparent = temp;
-    } else {
+    if (temp->rbparent != node) {
       rbtransplant(tree, temp, temp->right);
       temp->right = node->right;
       temp->right->rbparent = temp;
@@ -321,6 +319,15 @@ rbdelete(struct redBlackTree *tree, struct proc *node) {
   tree->min_vruntime = retriveMinimum(tree->root);
 }
 
+// "Pop" the node with the minimum vruntime out of the tree and return it.
+struct proc*
+rbpopMinimum(struct redBlackTree *tree)
+{
+  struct proc *minNode = tree->min_vruntime;
+  rbdelete(tree, tree->min_vruntime);
+  tree->min_vruntime = retriveMinimum(tree->root);
+  return minNode;
+}
 // --------------------------------------------
 
 void
