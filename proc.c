@@ -122,7 +122,6 @@ rbtransplant(struct redBlackTree *tree, struct proc *u, struct proc *v)
     v->rbparent = u->rbparent;
 }
 
-// repeated code because we haven't used retreiveUncle
 void
 rbinsertFixup(struct redBlackTree *tree, struct proc *node)
 {
