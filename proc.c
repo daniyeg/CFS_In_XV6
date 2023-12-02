@@ -393,7 +393,7 @@ getproc(struct redBlackTree *tree)
   if (tree->count != 0) // If the tree isn't empty
   {
     // Get process with minimum vruntime and "pop" it out of the tree
-    next_process = rbpopMinimum(&tree);
+    next_process = rbpopMinimum(tree);
 
     // Return NULL if the process is not runnable
     if(next_process->state != RUNNABLE)
