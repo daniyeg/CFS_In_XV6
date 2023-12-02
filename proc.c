@@ -15,10 +15,15 @@ struct {
 
 struct redBlackTree{
   struct proc *root;         // Root node
-  struct proc *min_vruntime; // Minimum vruntime node for O(1) access
+  struct proc *min_vruntime; // Node wih minimum vruntime for O(1) access
+  struct spinlock lock;      // Spinlock for the tree
   int count;                 // Total amount of nodes in rbtree
   int rbTreeWeight;          // Total sum of node weights
+  int period;                // Scheduler period
 } rbtree;
+
+static int min_granularity = 2; // Minimum time a task is allowed to run, tunable
+static int sched_latency = 2*8; // Must be multiple of min_granularity, tunable
 
 static struct proc *initproc;
 
@@ -328,10 +333,140 @@ rbpopMinimum(struct redBlackTree *tree)
 }
 // --------------------------------------------
 
+// Nice value to weight value conversion.
+// Roughly equivalent to 1024 / (1.25 ^ nice_value)
+// Nice value here is in the same range as nice value in linux kernel, between -20 and 19.
+static const int prio_to_weight[40] = {
+ /* -20 */     88761,     71755,     56483,     46273,     36291,
+ /* -15 */     29154,     23254,     18705,     14949,     11916,
+ /* -10 */      9548,      7620,      6100,      4904,      3906,
+ /*  -5 */      3121,      2501,      1991,      1586,      1277,
+ /*   0 */      1024,       820,       655,       526,       423,
+ /*   5 */       335,       272,       215,       172,       137,
+ /*  10 */       110,        87,        70,        56,        45,
+ /*  15 */        36,        29,        23,        18,        15,
+};
+
+// Initialize the red black tree
+void
+rbinit(struct redBlackTree *tree, char *lockName)
+{
+  initlock(&tree->lock, lockName);
+  tree->root = 0;
+  tree->min_vruntime = 0;
+  tree->count = 0;
+  tree->rbTreeWeight = 0;
+  tree->period = sched_latency; // Set initial period to sched_latency
+}
+
+// Update virtual runtime based on the current runtime and set current runtime to 0.
+// Since we are updating values of a process, ptable lock must be held before calling.
+void
+updateruntimes(struct proc *p)
+{
+  p->vruntime = p->vruntime +
+      (prio_to_weight[20] / p->weightValue) * p->cruntime;
+  p->cruntime = 0;
+}
+
+// Update scheduler period.
+// Since we are updating values of a tree, tree lock must be held before calling.
+void
+updateperiod(struct redBlackTree *tree)
+{
+  if (tree->count > sched_latency / min_granularity)
+    tree->period = tree->count * min_granularity;
+  else
+    tree->period = sched_latency;
+}
+
+// Get the process to schedule next.
+// The returned process is removed from the tree.
+// Returns 0 (null) if failed to get min_vruntime.
+struct proc*
+getproc(struct redBlackTree *tree)
+{
+  struct proc *next_process;
+
+  acquire(&tree->lock);
+
+  if (tree->count != 0) // If the tree isn't empty
+  {
+    // Get process with minimum vruntime and "pop" it out of the tree
+    next_process = rbpopMinimum(&tree);
+
+    // Return NULL if the process is not runnable
+    if(next_process->state != RUNNABLE)
+    {
+      release(&tree->lock);
+      return 0;
+    }
+
+    // Update sched period before calculating the maximum timeslice.
+    updateperiod(tree);
+    // Calculate maximum timesclie of the process
+    next_process->timeslice = tree->period *
+        (next_process->weightValue / (tree->rbTreeWeight + next_process->weightValue));
+
+    release(&tree->lock);
+    return next_process;
+  }
+
+  release(&tree->lock);
+  return 0;
+}
+
+// Insert runnable process into the red black tree.
+// Returns 0 if insert was successful, -1 if not.
+int
+insertproc(struct redBlackTree *tree, struct proc *p)
+{
+  acquire(&tree->lock);
+
+  if (tree->count < NPROC) // If the tree isn't full
+  {
+    // Determine the weight of the process based on its nice value.
+    p->weightValue = prio_to_weight[p->niceValue + 20];
+
+    // Insert process into the tree.
+    // All properties that change about the tree is done within rbinsert.
+    rbinsert(tree, p);
+
+    release(&tree->lock);
+    return 0;
+  }
+
+  release(&tree->lock);
+  return -1;
+}
+
+// Check whether or not we should preempt the current task.
+// Return 0 if we don't need to preempt, otherwise return 1.
+int
+checkpreempt(struct proc *curproc, struct proc *min_vruntime)
+{
+  // If the process has run less than min_granularity, don't preempt
+  if (curproc->cruntime < min_granularity)
+    return 0;
+
+  // Check if the current process has exceeded its timeslice
+  if (curproc->cruntime >= curproc->timeslice)
+    return 1;
+
+  // Check if we should switch to min_vruntime in the tree.
+  // Happens if min_vruntime is a runnable task with a lower virtual runtime.
+  if (min_vruntime != 0 && min_vruntime->state == RUNNABLE &&
+      curproc->vruntime > min_vruntime->vruntime)
+      return 1;
+
+  return 0;
+}
+
 void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+  rbinit(&rbtree, "rbtree");
 }
 
 // Must be called with interrupts disabled
@@ -420,6 +555,18 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // Set up variables that are used by CFS.
+  p->vruntime = 0;
+  p->cruntime = 0;
+  p->timeslice = 0;
+  p->niceValue = 0;
+  p->weightValue = 0;
+
+  p->left = 0;
+  p->right = 0;
+  p->rbparent = 0;
+  p->color = RED;
+
   return p;
 }
 
@@ -456,7 +603,10 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
+  // Make the process runnable.
   p->state = RUNNABLE;
+  // Insert the process into the tree.
+  insertproc(&rbtree, p);
 
   release(&ptable.lock);
 }
@@ -522,7 +672,12 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  // Make the process runnable.
   np->state = RUNNABLE;
+  // Nice value of the parent gets copied to the child.
+  np->niceValue = curproc->niceValue;
+  // Insert the process into the tree.
+  insertproc(&rbtree, np);
 
   release(&ptable.lock);
 
@@ -638,28 +793,35 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
+    // Get processes from the tree until one of them is runnable.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    p = getproc(&rbtree);
+    // Enter the loop if we could get a procces.
+    while (p != 0)
+    {
+      // If the process is runnable switch to it.
+      if (p->state == RUNNABLE)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      // Get another process from the tree.
+      p = getproc(&rbtree);
     }
-    release(&ptable.lock);
 
+    release(&ptable.lock);
   }
 }
 
@@ -689,13 +851,21 @@ sched(void)
   mycpu()->intena = intena;
 }
 
-// Give up the CPU for one scheduling round.
+// Determine whether the current process should be preempted or not.
 void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
-  sched();
+
+  // If the current process should be preempted, update its runtimes and reschedule.
+  if (checkpreempt(myproc(), rbtree.min_vruntime))
+  {
+    updateruntimes(myproc());
+    myproc()->state = RUNNABLE;
+    insertproc(&rbtree, myproc());
+    sched();
+  }
+
   release(&ptable.lock);
 }
 
@@ -769,7 +939,14 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
+      // Make the process runnable.
       p->state = RUNNABLE;
+      // Update current and virtual runtimes.
+      updateruntimes(p);
+      // Insert the process into the tree.
+      insertproc(&rbtree, p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -795,7 +972,14 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
+      {
+        // Make the process runnable.
         p->state = RUNNABLE;
+        // Update current and virtual runtimes.
+        updateruntimes(p);
+        // Insert the process into the tree.
+        insertproc(&rbtree, p);
+      }
       release(&ptable.lock);
       return 0;
     }
