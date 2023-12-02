@@ -325,7 +325,6 @@ rbpopMinimum(struct redBlackTree *tree)
 {
   struct proc *minNode = tree->min_vruntime;
   rbdelete(tree, tree->min_vruntime);
-  tree->min_vruntime = retriveMinimum(tree->root);
   return minNode;
 }
 // --------------------------------------------
