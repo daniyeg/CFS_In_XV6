@@ -166,7 +166,7 @@ getproc(struct redBlackTree *tree)
     updateperiod(tree);
     // Calculate maximum timesclie of the process
     next_process->timeslice = tree->period *
-        (next_process->weightValue / tree->rbTreeWeight);
+        (next_process->weightValue / (tree->rbTreeWeight + next_process->weightValue));
 
     release(&tree->lock);
     return next_process;
