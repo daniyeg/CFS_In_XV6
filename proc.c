@@ -690,7 +690,20 @@ fork(void)
   // Nice value of the parent gets copied to the child.
   np->niceValue = curproc->niceValue;
   // Insert the process into the tree.
-  insertproc(&rbtree, np);
+  if (insertproc(&rbtree, np) < 0)
+  {
+    // Putting the fork in run queue has failed, free its memory and return error
+    kfree(np->kstack);
+    np->kstack = 0;
+    freevm(np->pgdir);
+    np->pid = 0;
+    np->parent = 0;
+    np->name[0] = 0;
+    np->killed = 0;
+    np->state = UNUSED;
+
+    return -1;
+  }
 
   release(&ptable.lock);
 
