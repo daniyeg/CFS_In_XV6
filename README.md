@@ -11,6 +11,25 @@ in separate phases.</p>
 
 ## Completely Fair Scheduler (CFS)
 
+The CFS works by maintaining a model of "virtual run time" for each process. Each process is assigned a priority value based on its dynamic behavior and the amount of CPU time it has consumed. The CFS aims to distribute the CPU fairly among all processes, regardless of their priority.
+
+When a new process is created or an existing process becomes eligible for execution, the CFS adds it to a red-black tree data structure called the "rbtree." The position of each process in the tree is determined by its virtual run time, with processes that have consumed less CPU time being closer to the left.
+
+During scheduling, the CFS selects the process with the smallest virtual run time from the rbtree for execution. The selected process is then allocated a time slice (known as the "timeslice" or "quantum") to run on the CPU. The length of the time slice is calculated using the following formula:
+
+$$  timeslice_k = \frac{weight_k}{\sum_{i=0}^{n-1} weight_i} \times period $$
+
+sched_latency and min_granularity are scheduler tunables which decide the scheduler period, the period in which all run queue tasks are scheduled at least once. min_granularity decides the minimum time a task will be be allowed to run on CPU before being pre-empted out. The way sched_latency and min_granularity determine the scheduelr period is as follows:
+
+If $ number\ of\ runnable\ processes > \frac{sched\_latency}{min\_granularity} $ then $period = number\ of\ runnable\ processes \times min\_granularity$ otherwise $period = sched\_latency$.
+
+After a process finishes its time slice, it is reinserted into the rbtree with an updated virtual run time. This ensures that processes that have consumed more CPU time are placed deeper in the tree, giving them a lower priority for the next scheduling decision. the virtual runtime of a process is calculated by the following formula:
+
+$ vruntime_i = vruntime_i + \frac{weight_0}{weight_i} \times runtime_i$
+
+The weight of each process is determined by its nice value ranging from -20 to 19. The weight is derived from the following formula:
+
+$weight_i = \frac{1024}{1.25^{nice}}$
 
 ## Building and Testing
 
