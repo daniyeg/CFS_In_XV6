@@ -61,6 +61,9 @@ retriveUncle(struct proc *node)
 struct proc*
 retriveMinimum(struct proc *node)
 {
+  if (node == NULL)
+    return NULL;
+
   while (node->left != NULL)
     node = node->left;
 
@@ -70,6 +73,9 @@ retriveMinimum(struct proc *node)
 void
 rotateLeft(struct redBlackTree *tree, struct proc *node)
 {
+  if (node == NULL)
+    return;
+
   struct proc *rightChild = node->right;
   if (rightChild == NULL)
     return;
@@ -93,6 +99,9 @@ rotateLeft(struct redBlackTree *tree, struct proc *node)
 void
 rotateRight(struct redBlackTree *tree, struct proc *node)
 {
+  if (node == NULL)
+    return;
+
   struct proc *leftChild = node->left;
   if (leftChild == NULL)
     return;
@@ -113,6 +122,7 @@ rotateRight(struct redBlackTree *tree, struct proc *node)
   node->rbparent = leftChild;
 }
 
+// u must not be null!
 void
 rbtransplant(struct redBlackTree *tree, struct proc *u, struct proc *v)
 {
@@ -302,7 +312,9 @@ rbdelete(struct redBlackTree *tree, struct proc *node) {
     original_color = temp->color;
     child = temp->right;
 
-    if (temp->rbparent != node) {
+    if (temp->rbparent == node)
+      child->parent = temp;
+    else {
       rbtransplant(tree, temp, temp->right);
       temp->right = node->right;
       temp->right->rbparent = temp;
@@ -328,7 +340,8 @@ struct proc*
 rbpopMinimum(struct redBlackTree *tree)
 {
   struct proc *minNode = tree->min_vruntime;
-  rbdelete(tree, tree->min_vruntime);
+  if (minNode != NULL)
+    rbdelete(tree, tree->min_vruntime);
   return minNode;
 }
 // --------------------------------------------
@@ -396,7 +409,7 @@ getproc(struct redBlackTree *tree)
     next_process = rbpopMinimum(tree);
 
     // Return NULL if the process is not runnable
-    if(next_process->state != RUNNABLE)
+    if(next_process == NULL || next_process->state != RUNNABLE)
     {
       release(&tree->lock);
       return 0;
