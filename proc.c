@@ -988,6 +988,28 @@ kill(int pid)
   return -1;
 }
 
+// Add the given inc to the current process.
+// If the resulting value is out of range it will get clamped to the range.
+// Range of nice value is from -19 to 20.
+int
+nice(int inc)
+{
+  struct proc *p = myproc();
+
+  acquire(&ptable.lock);
+
+  int niceness = p->niceValue;
+
+  if (inc >= 0) niceness = (niceness <=  19 - inc) ? niceness + inc :  19;
+  else          niceness = (niceness >= -20 - inc) ? niceness + inc : -20;
+
+  p->niceValue = niceness;
+
+  release(&ptable.lock);
+
+  return niceness;
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
