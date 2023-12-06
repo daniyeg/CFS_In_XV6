@@ -142,7 +142,7 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
 {
   struct proc *parent, *grandparent, *uncle;
 
-  while (node != tree->root && node->rbparent->color == RED) {
+  while (node->rbparent != NULL && node->rbparent->color == RED) {
     parent = node->rbparent;
     grandparent = retriveGrandparent(node);
 
@@ -156,16 +156,16 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
         node = grandparent;
       } else {
         if (node == parent->right) {
+          rotateLeft(tree, parent);
           node = parent;
-          rotateLeft(tree, node);
+          parent = node->rbparent;
         }
 
-        parent = node->rbparent;
-        grandparent = retriveGrandparent(node);
-
-        parent->color = BLACK;
-        grandparent->color = RED;
         rotateRight(tree, grandparent);
+        enum procColor temp = parent->color;
+        parent->color = grandparent->color;
+        grandparent->color = temp;
+        node = parent;
       }
     } else {
       // Symmetric case when the parent is a right child of the grandparent
@@ -178,20 +178,21 @@ rbinsertFixup(struct redBlackTree *tree, struct proc *node)
         node = grandparent;
       } else {
         if (node == parent->left) {
+          rotateRight(tree, parent);
           node = parent;
-          rotateRight(tree, node);
+          parent = node->rbparent;
         }
 
-        parent = node->rbparent;
-        grandparent = retriveGrandparent(node);
-
-        parent->color = BLACK;
-        grandparent->color = RED;
         rotateLeft(tree, grandparent);
+        enum procColor temp = parent->color;
+        parent->color = grandparent->color;
+        grandparent->color = temp;
+        node = parent;
       }
     }
   }
-  tree->root->color = BLACK;
+  if (tree->root != NULL)
+    tree->root->color = BLACK;
 }
 
 void
