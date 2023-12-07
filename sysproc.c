@@ -109,3 +109,9 @@ sys_halt(void)
   }
   return 0;
 }
+
+int
+sys_ps(void)
+{
+  return ps();
+}

@@ -365,6 +365,18 @@ rbpopMinimum(struct redBlackTree *tree)
     rbdelete(tree, tree->min_vruntime);
   return minNode;
 }
+
+// Print tree in order of virtual runtime
+void
+rbinorder(struct proc *trav)
+{
+  if (trav == NULL)
+    return;
+
+  rbinorder(trav->left);
+  cprintf("pid:%d vrun:%d name:%s\n", trav->pid, trav->vruntime, trav->name);
+  rbinorder(trav->right);
+}
 // --------------------------------------------
 
 // Nice value to weight value conversion.
@@ -1091,5 +1103,26 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+
+    // print out tree information
+    acquire(&rbtree.lock);
+    cprintf("Tree:\n");
+    rbinorder(rbtree.root);
+    release(&rbtree.lock);
+    cprintf("Tree done!\n");
   }
+}
+
+int
+ps()
+{
+  struct proc *p = myproc();
+
+  acquire(&ptable.lock);
+
+  cprintf("running proc: pid:%d cruntime:%d vruntime:%d", p->pid, p->cruntime, p->vruntime);
+  procdump();
+
+  release(&ptable.lock);
+  return 0;
 }
