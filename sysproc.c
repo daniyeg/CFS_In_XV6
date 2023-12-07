@@ -98,3 +98,14 @@ sys_nice(void)
     return -21;
   return nice(inc);
 }
+
+int
+sys_halt(void)
+{
+  char *p = "Shutdown";
+  for( ; *p; p++)
+  {
+    outw(0xB004, *p);
+  }
+  return 0;
+}
