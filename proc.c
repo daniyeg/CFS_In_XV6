@@ -1103,14 +1103,14 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
-
-    // print out tree information
-    acquire(&rbtree.lock);
-    cprintf("Tree:\n");
-    rbinorder(rbtree.root);
-    release(&rbtree.lock);
-    cprintf("Tree done!\n");
   }
+  // print out tree information
+  acquire(&rbtree.lock);
+  cprintf("Tree:\n");
+  rbinorder(rbtree.root);
+  release(&rbtree.lock);
+  cprintf("Tree done!\n");
+
 }
 
 int
@@ -1120,7 +1120,7 @@ ps()
 
   acquire(&ptable.lock);
 
-  cprintf("running proc: pid:%d cruntime:%d vruntime:%d", p->pid, p->cruntime, p->vruntime);
+  cprintf("running proc: pid:%d cruntime:%d vruntime:%d\n", p->pid, p->cruntime, p->vruntime);
   procdump();
 
   release(&ptable.lock);
