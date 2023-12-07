@@ -480,7 +480,7 @@ int
 checkpreempt(struct proc *curproc, struct proc *min_vruntime)
 {
   // If the process has run less than min_granularity, don't preempt
-  if (curproc->cruntime < min_granularity)
+  if (curproc->cruntime < min_granularity && curproc->cruntime != 0)
     return 0;
 
   // Check if the current process has exceeded its timeslice
