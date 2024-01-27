@@ -54,6 +54,7 @@ struct proc {
 
   int vruntime;                // Virtual runtime to sort red black tree
   int cruntime;                // Current runtime
+  int truntime;                // Total runtime, for debug purposes
   int timeslice;               // Time Slice for maximum execution time of the process
   int niceValue;               // Nice value to determine initial weight, -20 <= NV <= 19
   int weightValue;             // Weight value to determine process timeslice

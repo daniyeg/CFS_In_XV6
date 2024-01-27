@@ -412,6 +412,7 @@ updateruntimes(struct proc *p)
 {
   p->vruntime = p->vruntime +
       (prio_to_weight[20] / p->weightValue) * p->cruntime;
+  p->truntime = p->truntime + p->cruntime;
   p->cruntime = 0;
 }
 
@@ -604,6 +605,7 @@ found:
   // Set up variables that are used by CFS.
   p->vruntime = 0;
   p->cruntime = 0;
+  p->truntime = 0;
   p->timeslice = 0;
   p->niceValue = 0;
   p->weightValue = 0;
@@ -1096,7 +1098,11 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    if (p->state == RUNNABLE || p->state == RUNNING)
+      cprintf("%d %s %s %d %d %d %d",
+      p->pid, state, p->name, p->niceValue, p->truntime, p->cruntime, p->vruntime);
+    else
+      cprintf("%d %s %s %d %d", p->pid, state, p->name, p->niceValue, p->truntime);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -1110,19 +1116,19 @@ procdump(void)
   rbinorder(rbtree.root);
   release(&rbtree.lock);
   cprintf("Tree done!\n");
-
 }
 
 int
 ps()
 {
-  struct proc *p = myproc();
+  uint xticks;
 
-  acquire(&ptable.lock);
+  acquire(&tickslock);
+  xticks = ticks;
+  release(&tickslock);
 
-  cprintf("running proc: pid:%d cruntime:%d vruntime:%d\n", p->pid, p->cruntime, p->vruntime);
+  cprintf("uptime: %d\n", xticks);
   procdump();
 
-  release(&ptable.lock);
   return 0;
 }
