@@ -102,11 +102,7 @@ sys_nice(void)
 int
 sys_halt(void)
 {
-  char *p = "Shutdown";
-  for( ; *p; p++)
-  {
-    outw(0xB004, *p);
-  }
+  outw(0x604, 0x200);
   return 0;
 }
 
