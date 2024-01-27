@@ -102,7 +102,7 @@ sys_nice(void)
 int
 sys_halt(void)
 {
-  outw(0x604, 0x200);
+  outw(0x604, 0x2000);
   return 0;
 }
 
