@@ -411,7 +411,7 @@ void
 updateruntimes(struct proc *p)
 {
   p->vruntime = p->vruntime +
-      (prio_to_weight[20] / p->weightValue) * p->cruntime;
+      (prio_to_weight[20] * p->cruntime) / p->weightValue;
   p->truntime = p->truntime + p->cruntime;
   p->cruntime = 0;
 }
