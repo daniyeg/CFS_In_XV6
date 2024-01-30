@@ -33,7 +33,7 @@ ioproc(void)
 void
 nicetest()
 {
-  printf(1, "nice test done!\n");
+  printf(1, "nice test!\n");
 
   // Spawn high priority process
   int pid1 = fork();

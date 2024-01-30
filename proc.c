@@ -254,6 +254,13 @@ rbdeleteFixup(struct redBlackTree *tree, struct proc *node, struct proc *nodePar
         sibling = parent->right;
       }
 
+      if (sibling == NULL)
+      {
+        node = parent;
+        parent = node->rbparent;
+        continue;
+      }
+
       if ((sibling->left == NULL || sibling->left->color == BLACK) &&
           (sibling->right == NULL || sibling->right->color == BLACK)) {
         sibling->color = RED;
@@ -285,6 +292,13 @@ rbdeleteFixup(struct redBlackTree *tree, struct proc *node, struct proc *nodePar
         parent->color = RED;
         rotateRight(tree, parent);
         sibling = parent->left;
+      }
+
+      if (sibling == NULL)
+      {
+        node = parent;
+        parent = node->rbparent;
+        continue;
       }
 
       if ((sibling->left == NULL || sibling->left->color == BLACK) &&
