@@ -21,8 +21,8 @@ struct redBlackTree{
   int period;                // Scheduler period
 } rbtree;
 
-static int min_granularity = 2; // Minimum time a task is allowed to run, tunable
-static int sched_latency = 2*8; // Must be multiple of min_granularity, tunable
+static int min_granularity = 40; // Minimum time a task is allowed to run, tunable
+static int sched_latency = 40*8; // Must be multiple of min_granularity, tunable
 
 static struct proc *initproc;
 
