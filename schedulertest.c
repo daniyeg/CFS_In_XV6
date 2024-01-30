@@ -5,7 +5,7 @@
 void
 cpuproc(void)
 {
-  for(;;) {}
+  for(;;){}
 }
 
 void
@@ -29,7 +29,8 @@ nicetest()
   printf(1, "pid1:%d pid2:%d\n", pid1, pid2);
 
   // Busy wait
-  int temp;
+  // About 5 seconds
+  volatile int temp;
   for (int i = 0; i < 1000000000; i++)
   {
     temp *= 2;
@@ -42,9 +43,6 @@ nicetest()
   // Kill forks
   kill(pid1);
   kill(pid2);
-
-  wait();
-  wait();
 }
 
 int
