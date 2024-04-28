@@ -1,13 +1,9 @@
 
 # OS-4021
-<p>xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
-Version 6 (v6).<br>
-This repository was created as a project for OS course in Fall of 1402.
-This repository includes the following improvements which have been implemented
-in separate phases.</p>
+<p> This repository was created as a project for Operating Systems course in Fall of 1402.
+This project replaces the default xv6 scheduler with the Completely Fair Scheduler (CFS) algorithm. </p>
 
-1. Completely Fair Scheduler (CFS) implementation in xv6.
-2. TBC...
+<p> Besides from the implementation of a few extra syscalls, Most of the changes (implementation of the red black tree data structure and CFS) are contained inside <code>proc.c</code>. There is also a rudimentary test file called <code>schedulertest.c</code> that is compiled alongside other user programs, and can be executed while running xv6 by typing in the command <code>schedulertest</code>.</p>
 
 ## Completely Fair Scheduler (CFS)
 
@@ -17,13 +13,13 @@ When a new process is created or an existing process becomes eligible for execut
 
 During scheduling, the CFS selects the process with the smallest virtual runtime from the rbtree for execution. The selected process is then allocated a maximum time slice (known as the "timeslice" or "quantum") to run on the CPU. The length of the time slice is calculated using the following formula:
 
-$$timeslice_k = \frac{weight_k}{\sum_{i=0}^{n-1}weight_i} \times period$$
+$$ timeslice_k = \frac{weight_k}{\sum{weight_i}} \times period $$
 
 "sched latency" and "min granularity" are scheduler tunables which decide the scheduler period, the period in which all run queue tasks are scheduled at least once. min granularity decides the minimum time a task will be be allowed to run on CPU before being pre-empted out. The way sched latency and min_granularity determine the scheduelr period is as follows:
 
 If $number\ of\ runnable\ processes > \frac{sched\ latency}{min\ granularity}$
 then $period = number\ of\ runnable\ processes \times min\ granularity$
-otherwise $period = sched\ latency$.
+, otherwise $period = sched\ latency$.
 
 After a process finishes its time slice or when a process with a lower virtual runtime is in the tree, it is reinserted into the rbtree with an updated virtual runtime. This ensures that processes that have consumed more CPU time are placed deeper in the tree, giving them a lower priority for the next scheduling decision. the virtual runtime of a process is calculated by the following formula:
 
