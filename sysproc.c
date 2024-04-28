@@ -89,3 +89,25 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_nice(void)
+{
+  int inc;
+  if (argint(0, &inc) < 0)
+    return -21;
+  return nice(inc);
+}
+
+int
+sys_halt(void)
+{
+  outw(0x604, 0x2000);
+  return 0;
+}
+
+int
+sys_ps(void)
+{
+  return ps();
+}

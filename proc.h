@@ -34,6 +34,8 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+enum procColor {RED, BLACK};   // Colors of proc in rbtree
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -49,6 +51,18 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  int vruntime;                // Virtual runtime to sort red black tree
+  int cruntime;                // Current runtime
+  int truntime;                // Total runtime, for debug purposes
+  int timeslice;               // Time Slice for maximum execution time of the process
+  int niceValue;               // Nice value to determine initial weight, -20 <= NV <= 19
+  int weightValue;             // Weight value to determine process timeslice
+
+  struct proc *left;           // Left child in rbtree
+  struct proc *right;          // Right child in rbtree
+  struct proc *rbparent;       // Parent of proc in rbtree
+  enum procColor color;        // Color of proc in rbtree
 };
 
 // Process memory is laid out contiguously, low addresses first:
